@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radiografía de turnos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@1,500;1,600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#ffffff;--bg-panel:#fbfbfa;--bg-panel-2:#f1f2ef;--line:#e0e1dd;
+  --text:#17181a;--text-dim:#62666b;--cyan:#0c8f82;--cyan-soft:rgba(12,143,130,.10);
+  --amber:#c97a12;--red:#d6402c;--raspberry:#c23a5e;--mono:'IBM Plex Mono',monospace;--sans:'Inter',sans-serif;--script:'Cormorant Garamond',serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);
+  color:var(--text);font-family:var(--sans);line-height:1.5}
+main{max-width:1400px;margin:0 auto;padding:2rem 2rem 4rem}
+a{color:var(--cyan)}
+.topbar{display:flex;align-items:baseline;gap:1.5rem;padding:1.4rem 2rem;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:.5rem;font-family:var(--mono);font-weight:700;font-size:.95rem;color:var(--text);letter-spacing:.04em;text-transform:uppercase}
+.brand-mark{color:var(--cyan);font-size:1.2rem}
+.brand-dim{color:var(--text-dim);font-weight:400}
+.brand-row{display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap}
+.brand-amorino{font-family:var(--script);font-style:italic;font-weight:600;font-size:1.05rem;color:var(--raspberry);letter-spacing:.01em}
+.brand-amorino .sep{color:var(--line);margin:0 .35rem;font-style:normal}
+.brand-amorino .tagline{color:var(--text-dim);font-size:.82rem;font-weight:500}
+.topbar-hint{color:var(--text-dim);font-size:.85rem}
+.flash-stack{margin-top:1rem}
+.flash{background:rgba(214,64,44,.08);border:1px solid rgba(214,64,44,.3);color:#8a2c1d;padding:.75rem 1rem;border-radius:8px;font-size:.9rem;margin-bottom:.5rem}
+.hero{padding:1.75rem 0 1.75rem;border-bottom:1px dashed var(--line);margin-bottom:1.75rem}
+.hero-compact{padding:1rem 0}
+.eyebrow{font-family:var(--mono);color:var(--cyan);font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;margin:0 0 .6rem}
+.hero h1{font-size:2.1rem;line-height:1.15;margin:0 0 1rem;font-weight:700;letter-spacing:-.01em}
+.lede{color:var(--text-dim);max-width:70ch}
+.lede code{color:var(--cyan);font-family:var(--mono);font-size:.92em}
+.panel-grid{display:grid;gap:1.25rem}
+.panel{background:var(--bg-panel);border:1px solid var(--line);border-radius:12px;padding:1.5rem}
+.panel-title{font-family:var(--mono);font-size:.95rem;margin:0 0 .4rem}
+.panel-help{color:var(--text-dim);font-size:.85rem;margin:0 0 1rem}
+.panel-note{color:var(--text-dim);font-size:.8rem;margin-top:.75rem;border-left:2px solid var(--cyan);padding-left:.75rem}
+.field-row{display:flex;gap:1rem;flex-wrap:wrap}
+.field{flex:1;min-width:160px;display:flex;flex-direction:column;gap:.4rem}
+.field label{font-size:.8rem;color:var(--text-dim)}
+.field input,.field select{background:var(--bg-panel-2);border:1px solid var(--line);color:var(--text);padding:.6rem .7rem;border-radius:8px;font-family:var(--mono);font-size:.95rem}
+.field input:focus,.field select:focus,.dropzone:focus-within{outline:2px solid var(--cyan);outline-offset:1px}
+.dropzone{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:.4rem;border:1.5px dashed var(--line);border-radius:10px;padding:1.5rem 1rem;cursor:pointer;transition:border-color .15s,background .15s}
+.dropzone:hover{border-color:var(--cyan);background:var(--cyan-soft)}
+.dropzone input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.dropzone-icon{font-size:1.4rem;color:var(--cyan)}
+.dropzone-text{font-weight:600}
+.dropzone-sub{color:var(--text-dim);font-size:.8rem;font-family:var(--mono)}
+.btn-primary,.btn-secondary,.btn-ghost{font-family:var(--sans);font-weight:600;border-radius:8px;padding:.8rem 1.3rem;border:1px solid transparent;cursor:pointer;font-size:.95rem;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.btn-primary{background:var(--cyan);color:#ffffff;width:100%}
+.btn-primary:hover{background:#0aa597}
+.btn-secondary{background:var(--bg-panel-2);color:var(--text);border-color:var(--line)}
+.btn-secondary:hover{border-color:var(--cyan)}
+.btn-ghost{background:transparent;color:var(--text-dim);border-color:var(--line)}
+.btn-ghost:hover{color:var(--text)}
+.howitworks{margin-top:2rem}
+.steps{padding-left:1.2rem;color:var(--text-dim)}
+.steps li{margin-bottom:.5rem}
+.steps strong{color:var(--text)}
+.params-bar{display:flex;align-items:flex-end;gap:1rem;flex-wrap:wrap;background:var(--bg-panel);border:1px solid var(--line);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.25rem}
+.params-bar .field{min-width:200px;flex:none}
+.day-counts{display:flex;gap:.6rem;flex-wrap:wrap}
+.day-count{background:var(--bg-panel-2);border:1px solid var(--line);border-radius:8px;padding:.55rem .85rem;display:flex;flex-direction:column;gap:.15rem;min-width:84px}
+.day-count-label{font-size:.75rem;color:var(--text-dim)}
+.day-count-value{font-family:var(--mono);color:var(--cyan);font-weight:700}
+.table-panel{margin-top:1rem}
+.table-scroll{overflow-x:auto;margin-top:.75rem}
+.radio-table{border-collapse:separate;border-spacing:4px;width:100%;min-width:720px}
+.radio-table th{font-family:var(--mono);font-size:.78rem;color:var(--text-dim);font-weight:500;padding:.4rem;text-align:center}
+.hora-col{text-align:left!important;color:var(--text);font-family:var(--mono)}
+.staff-cell{text-align:center;border-radius:8px;padding:.5rem .4rem;font-family:var(--mono);border:1px solid var(--line)}
+.cell-amount{display:block;font-size:.72rem;color:var(--text-dim)}
+.cell-staff{display:block;font-size:1.05rem;font-weight:700;margin-top:2px}
+.staff-0{background:var(--bg-panel-2);color:var(--text-dim)}
+.staff-1{background:rgba(12,143,130,.10);color:var(--cyan)}
+.staff-2{background:rgba(12,143,130,.22);color:var(--cyan)}
+.staff-3{background:rgba(201,122,18,.16);color:var(--amber)}
+.staff-4{background:rgba(201,122,18,.30);color:var(--amber)}
+.staff-5{background:rgba(214,64,44,.22);color:var(--red)}
+.legend{display:flex;align-items:center;gap:.5rem;margin-top:1rem;flex-wrap:wrap}
+.legend-label{color:var(--text-dim);font-size:.8rem;margin-right:.3rem}
+.legend-swatch{font-family:var(--mono);font-size:.75rem;padding:.25rem .6rem;border-radius:6px;border:1px solid var(--line)}
+.footer{text-align:center;color:var(--text-dim);font-size:.8rem;padding:1.5rem 1rem}
+.hidden{display:none}
+@media(max-width:640px){.hero h1{font-size:1.6rem}}
+
+/* Tabs */
+.tabbar{display:flex;gap:.4rem;padding:0 2rem;border-bottom:1px solid var(--line);max-width:1400px;margin:0 auto}
+.tab-btn{font-family:var(--mono);font-size:.85rem;font-weight:500;color:var(--text-dim);background:transparent;border:none;border-bottom:2px solid transparent;padding:.9rem .3rem;cursor:pointer;margin-right:1.25rem}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--text);border-bottom-color:var(--cyan)}
+
+/* Evaluación de turnos — componentes propios */
+.key-row{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.key-row input{flex:1;min-width:220px}
+.key-status{font-size:.78rem;color:var(--cyan);display:none}
+.key-status.visible{display:block}
+.dz-fname{font-size:.78rem;color:var(--cyan);margin-top:.3rem;font-weight:600;word-break:break-all}
+.dz-progress{font-size:.78rem;color:var(--text-dim);margin-top:.3rem}
+.dz.ok{border-style:solid;border-color:var(--cyan);background:var(--cyan-soft)}
+.dz.loading{border-style:solid;border-color:var(--line)}
+.preview-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem}
+@media(max-width:760px){.preview-grid{grid-template-columns:1fr}}
+.pg-wrap{overflow-x:auto}
+table.pg{border-collapse:collapse;font-size:.72rem;width:100%}
+table.pg th{font-size:.68rem;font-weight:500;color:var(--text-dim);padding:.3rem;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
+table.pg th.slot-h{text-align:left;width:50px}
+table.pg td{padding:.2rem .25rem;text-align:center;border-bottom:1px solid var(--bg-panel-2)}
+table.pg td.slot-c{text-align:left;font-size:.68rem;color:var(--text-dim);white-space:nowrap;font-family:var(--mono)}
+.n0{color:var(--text-dim)}.n1{color:var(--text);font-weight:600}.n2{color:var(--cyan);font-weight:600}.n3{color:#1862c6;font-weight:600}.n4,.n5,.n6{color:var(--red);font-weight:600}
+.tog-row{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+.tog{display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .8rem;border-radius:8px;border:1px solid var(--line);font-size:.8rem;cursor:pointer;user-select:none;color:var(--text-dim);background:var(--bg)}
+.tog.on{background:var(--bg-panel-2);border-color:var(--text-dim);color:var(--text)}
+.tog input{display:none}
+.eval-legend{display:flex;gap:1.1rem;flex-wrap:wrap;font-size:.78rem;color:var(--text-dim);margin-top:.75rem}
+.eval-li{display:flex;align-items:center;gap:.4rem}
+.eval-ld{width:.7rem;height:.7rem;border-radius:3px;flex-shrink:0}
+.eval-lok{background:rgba(12,143,130,.25)}.eval-lov{background:rgba(24,98,198,.2)}.eval-lun{background:rgba(214,64,44,.2)}
+.eval-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.75rem;margin-top:1.25rem}
+.eval-stat{background:var(--bg-panel-2);border-radius:8px;padding:.6rem .9rem}
+.eval-stat-label{font-size:.75rem;color:var(--text-dim);margin-bottom:.2rem}
+.eval-stat-val{font-size:1.4rem;font-weight:700;font-family:var(--mono)}
+.v-ok{color:var(--cyan)}.v-ov{color:#1862c6}.v-un{color:var(--red)}
+.ct-wrap{overflow-x:auto;margin-top:1rem;border:1px solid var(--line);border-radius:10px}
+table.ct{width:100%;border-collapse:collapse;font-size:.78rem}
+table.ct thead tr{border-bottom:1px solid var(--line)}
+table.ct th{font-size:.72rem;font-weight:600;color:var(--text-dim);padding:.5rem .3rem;text-align:center;background:var(--bg-panel-2)}
+table.ct th.cf{text-align:left;padding-left:.75rem;width:76px;position:sticky;left:0;background:var(--bg-panel-2);z-index:1}
+.ct-dy{font-weight:600;color:var(--text);font-size:.76rem}.ct-dt{font-weight:400;color:var(--text-dim);font-size:.66rem}
+table.ct td{padding:.15rem .3rem;text-align:center;border-bottom:1px solid var(--bg-panel-2)}
+table.ct td.cf{text-align:left;padding-left:.75rem;font-size:.72rem;color:var(--text-dim);white-space:nowrap;background:var(--bg);position:sticky;left:0;font-weight:600}
+tr.rr td{border-bottom:1px solid var(--line)}
+tr.rr td.cf{font-size:.66rem;color:#86898d;font-weight:400;padding-bottom:.35rem}
+tr.rr td.rv{font-size:.66rem;color:#86898d;padding-bottom:.35rem}
+.eval-cell{display:inline-flex;align-items:center;justify-content:center;border-radius:4px;width:42px;height:22px;font-size:.72rem;font-weight:600;gap:1px;font-family:var(--mono)}
+.eval-ok{background:rgba(12,143,130,.14);color:var(--cyan)}
+.eval-ov{background:rgba(24,98,198,.12);color:#1862c6}
+.eval-un{background:rgba(214,64,44,.12);color:var(--red)}
+.eval-em{background:transparent;color:#b7babd}
+.eval-df{font-size:.62rem;opacity:.75}
+#closuresTable td{text-align:left;padding:.45rem .7rem;font-size:.78rem}
+#closuresTable th{text-align:left;padding:.45rem .7rem}
+#closuresTable .num{text-align:center;font-weight:600}
+#closuresTable .badge{display:inline-block;background:rgba(214,64,44,.14);color:var(--red);border-radius:4px;padding:.05rem .45rem;font-size:.72rem;font-weight:600}
+#closuresTable .detail{font-size:.72rem;color:var(--text-dim)}
+#closuresTable .detail .warn{color:var(--red);font-weight:600}
+#closuresTable tr.has-warn{background:rgba(214,64,44,.05)}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand-row">
+    <span class="brand">HERRAMIENTAS DE GESTIÓN PARA LA ELABORACIÓN DE LOS TURNOS</span>
+    <span class="brand-amorino"><span class="sep">·</span>Amorino <span class="tagline">— Gelato al Naturale</span></span>
+  </div>
+</header>
+
+<nav class="tabbar">
+  <button class="tab-btn" id="tabBtnEval" type="button">Evaluación del turno</button>
+  <button class="tab-btn active" id="tabBtnRadio" type="button">Generar Radiografía</button>
+</nav>
+
+<div class="flash-stack" id="flashStack" style="max-width:1080px;margin:1rem auto 0;padding:0 1.5rem;"></div>
+
+<main>
+
+<div id="tabRadiografia">
+
+  <!-- ===== PASO 1: SUBIDA + PARAMETROS ===== -->
+  <section id="viewUpload">
+    <section class="hero">
+      <p class="eyebrow">01 · Datos de entrada</p>
+      <p class="lede">
+        Sube el Excel agregado por franja y día de la semana (columnas como
+        <code>SumaLunes</code>, <code>SumaMartes</code>…). A partir del histórico
+        y de tu estándar de productividad, calculamos cuánta gente hace falta en
+        cada hora de cada día. Nada se sube a ningún servidor: todo el cálculo
+        ocurre aquí mismo, en tu navegador.
+      </p>
+    </section>
+
+    <div class="panel-grid">
+      <div class="panel">
+        <h2 class="panel-title">Archivo</h2>
+        <label class="dropzone" for="excelInput">
+          <input id="excelInput" type="file" accept=".xlsx">
+          <span class="dropzone-icon" aria-hidden="true">↥</span>
+          <span class="dropzone-text" id="dropzoneText">Arrastra tu .xlsx aquí o haz clic para elegirlo</span>
+          <span class="dropzone-sub">Debe incluir columnas NumHora + Suma&lt;Día&gt;</span>
+        </label>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Rango de fechas que justifica los datos</h2>
+        <p class="panel-help">Necesario para saber cuántos lunes, martes… hay en el periodo (puede ser un mes natural o cualquier otro rango).</p>
+        <div class="field-row">
+          <div class="field">
+            <label for="startDateInput">Desde</label>
+            <input id="startDateInput" type="date">
+          </div>
+          <div class="field">
+            <label for="endDateInput">Hasta</label>
+            <input id="endDateInput" type="date">
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Tienda</h2>
+        <div class="field-row">
+          <div class="field">
+            <label for="storeSelect">Selecciona la tienda</label>
+            <select id="storeSelect">
+              <option value="">— Elige una tienda —</option>
+              <option value="Amorino Alcázar">Alcázar</option>
+              <option value="Amorino Los Naranjos">Los Naranjos</option>
+              <option value="Amorino Plaza Nueva">Plaza Nueva</option>
+              <option value="Amorino Catedral">Catedral</option>
+              <option value="custom">Otra (introducir manualmente)…</option>
+            </select>
+          </div>
+          <div class="field" id="storeCustomField" style="display:none">
+            <label for="storeCustomInput">Nombre de la tienda</label>
+            <input id="storeCustomInput" type="text" placeholder="Nombre de la tienda">
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Parámetros del modelo</h2>
+        <p class="panel-help">Puedes ajustarlos luego también, sin volver a subir el archivo.</p>
+        <div class="field-row">
+          <div class="field">
+            <label for="prodInput">Productividad (€ / vendedor / hora)</label>
+            <input id="prodInput" type="number" step="0.01" min="0.01" value="110">
+          </div>
+          <div class="field">
+            <label for="umbralInput">Umbral de redondeo</label>
+            <input id="umbralInput" type="number" step="0.01" min="0.01" max="0.99" value="0.6">
+          </div>
+        </div>
+        <p class="panel-note">
+          Con umbral 0,6: de 0 a 1,6 → 1 persona; de 1,6 a 2,6 → 2 personas; de 2,6 a 3,6 → 3 personas, y así sucesivamente.
+        </p>
+      </div>
+
+      <button class="btn-primary" id="btnGenerar">Generar radiografía</button>
+    </div>
+
+    <section class="howitworks">
+      <p class="eyebrow">Cómo se calcula</p>
+      <ol class="steps">
+        <li><strong>Venta media de la franja</strong> = total de esa franja sumado entre todos los días iguales del mes, dividido entre cuántos de esos días hubo.</li>
+        <li><strong>Personal requerido</strong> = venta media ÷ productividad.</li>
+        <li><strong>Personal final</strong> = redondeo con umbral configurable (no es un redondeo al 0,5 estándar).</li>
+      </ol>
+    </section>
+  </section>
+
+  <!-- ===== PASO 2: RESULTADO ===== -->
+  <section id="viewResult" class="hidden">
+    <section class="hero hero-compact">
+      <p class="eyebrow">02 · Resultado</p>
+      <h1 id="resultTitle">Radiografía</h1>
+      <p class="lede" id="resultSubtitle"></p>
+    </section>
+
+    <div class="params-bar">
+      <div class="field">
+        <label for="prodInput2">Productividad (€/vendedor/hora)</label>
+        <input id="prodInput2" type="number" step="0.01" min="0.01" value="110">
+      </div>
+      <div class="field">
+        <label for="umbralInput2">Umbral de redondeo</label>
+        <input id="umbralInput2" type="number" step="0.01" min="0.01" max="0.99" value="0.6">
+      </div>
+      <button class="btn-secondary" id="btnRecalcular">Recalcular</button>
+      <button class="btn-secondary" id="btnExportarPDF">Exportar a PDF</button>
+      <a class="btn-ghost" href="#" id="btnVolver">Subir otro mes</a>
+    </div>
+
+    <div id="pdfContent">
+    <section class="panel">
+      <h2 class="panel-title">Días detectados</h2>
+      <div class="day-counts" id="dayCounts"></div>
+    </section>
+
+    <section class="panel table-panel">
+      <h2 class="panel-title">Venta media (€) y personal por franja</h2>
+      <p class="panel-help">Cada celda: venta media de esa franja para ese día de la semana, y debajo el nº de vendedores que se asignan.</p>
+      <div class="table-scroll">
+        <table class="radio-table" id="radioTable"></table>
+      </div>
+      <div class="legend">
+        <span class="legend-label">Vendedores:</span>
+        <span class="legend-swatch staff-0">0</span>
+        <span class="legend-swatch staff-1">1</span>
+        <span class="legend-swatch staff-2">2</span>
+        <span class="legend-swatch staff-3">3</span>
+        <span class="legend-swatch staff-4">4</span>
+        <span class="legend-swatch staff-5">5+</span>
+      </div>
+    </section>
+    </div>
+  </section>
+
+</div>
+
+<!-- ===== TAB: EVALUACIÓN DEL TURNO PLANIFICADO ===== -->
+<div id="tabEvaluacion" class="hidden">
+
+  <section class="hero">
+    <p class="eyebrow">Evaluación del turno</p>
+    <p class="lede">
+      Sube el PDF del planning semanal y el Excel de la radiografía: comparamos
+      cuánta gente está realmente programada en cada franja frente a lo que la
+      radiografía recomienda.
+    </p>
+  </section>
+
+  <div class="panel-grid">
+    <div class="panel">
+      <h2 class="panel-title">Clave de API de Anthropic</h2>
+      <p class="panel-help">Se guarda solo en este navegador (localStorage), nunca se envía a ningún sitio salvo a la API de Anthropic.</p>
+      <div class="key-row">
+        <input type="password" id="evalKeyInput" placeholder="sk-ant-api03-...">
+        <button class="btn-secondary" id="evalKeySave" type="button">Guardar</button>
+      </div>
+      <p class="key-status" id="evalKeyStatus">Key guardada en este navegador</p>
+    </div>
+
+    <div class="preview-grid">
+      <div class="panel">
+        <h2 class="panel-title">Planning (PDF)</h2>
+        <label class="dropzone dz" id="evalDzPdf" for="evalInPdf">
+          <input id="evalInPdf" type="file" accept=".pdf">
+          <span class="dropzone-icon" aria-hidden="true">📋</span>
+          <span class="dropzone-text">Arrastra o haz clic</span>
+          <span class="dz-fname" id="evalPdfName"></span>
+          <span class="dz-progress" id="evalPdfProgress"></span>
+        </label>
+      </div>
+      <div class="panel">
+        <h2 class="panel-title">Radiografía (Excel)</h2>
+        <label class="dropzone dz" id="evalDzXls" for="evalInXls">
+          <input id="evalInXls" type="file" accept=".xlsx,.xls">
+          <span class="dropzone-icon" aria-hidden="true">📊</span>
+          <span class="dropzone-text">Arrastra o haz clic</span>
+          <span class="dz-fname" id="evalXlsName"></span>
+        </label>
+      </div>
+    </div>
+
+    <p class="panel-help" id="evalStatus" style="margin-top:-.5rem">Introduce tu API key y carga los archivos.</p>
+  </div>
+
+  <div class="preview-grid hidden" id="evalTiles">
+    <div class="panel">
+      <h2 class="panel-title">📋 Turnos planificados</h2>
+      <p class="panel-help" id="evalPdfMeta"></p>
+      <div class="pg-wrap"><table class="pg" id="evalPdfGrid"></table></div>
+    </div>
+    <div class="panel">
+      <h2 class="panel-title">📊 Radiografía</h2>
+      <p class="panel-help" id="evalXlsMeta"></p>
+      <div class="pg-wrap"><table class="pg" id="evalXlsGrid"></table></div>
+    </div>
+  </div>
+
+  <div id="evalApp" class="hidden">
+    <section class="hero hero-compact">
+      <p class="eyebrow" id="evalResHdr"></p>
+    </section>
+
+    <div class="panel">
+      <h2 class="panel-title">Etiquetas incluidas en el recuento</h2>
+      <div class="tog-row" id="evalTogRow">
+        <label class="tog on"><input type="checkbox" value="manager" checked> Manager</label>
+        <label class="tog on"><input type="checkbox" value="jefe" checked> Jefe de turno</label>
+        <label class="tog on"><input type="checkbox" value="artista" checked> Artista del gelato</label>
+        <label class="tog on"><input type="checkbox" value="limpieza" checked> Limpieza</label>
+        <label class="tog on"><input type="checkbox" value="organizar" checked> Organizar -20</label>
+        <label class="tog on"><input type="checkbox" value="porte" checked> Porte</label>
+        <button class="btn-secondary" id="evalExportBtn" type="button" style="margin-left:auto">⬇ Exportar a PDF</button>
+      </div>
+      <div class="eval-legend">
+        <span class="eval-li"><span class="eval-ld eval-lok"></span>Igual</span>
+        <span class="eval-li"><span class="eval-ld eval-lov"></span>Por encima</span>
+        <span class="eval-li"><span class="eval-ld eval-lun"></span>Por debajo</span>
+      </div>
+      <div class="eval-summary" id="evalSummary"></div>
+    </div>
+
+    <div id="evalExportArea">
+      <section class="panel table-panel">
+        <h2 class="panel-title">Comparativa por franja</h2>
+        <div class="ct-wrap"><table class="ct"><thead><tr id="evalThead"></tr></thead><tbody id="evalTbody"></tbody></table></div>
+      </section>
+
+      <section class="panel table-panel">
+        <h2 class="panel-title">Cierres por persona</h2>
+        <p class="panel-help">Una persona "cierra" cuando es de las que termina más tarde ese día. Se marca en rojo si entra al día siguiente con menos de 12h de descanso.</p>
+        <div class="ct-wrap">
+          <table class="ct" id="closuresTable">
+            <thead><tr><th class="cf">Empleado</th><th>Cierres</th><th>Incidencias &lt;12h</th><th>Detalle</th></tr></thead>
+            <tbody id="evalClosuresTbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+</div>
+
+</main>
+
+<footer class="footer">
+  <span>El cálculo se hace por completo en tu navegador: tu archivo nunca sale de tu ordenador.</span>
+</footer>
+
+<script>
+const DIAS = ["Lunes","Martes","Miercoles","Jueves","Viernes","Sabado","Domingo"];
+const DIAS_LABEL = {Lunes:"Lunes",Martes:"Martes",Miercoles:"Miércoles",Jueves:"Jueves",Viernes:"Viernes",Sabado:"Sábado",Domingo:"Domingo"};
+
+let datosVentas = null; // { Lunes: {hora: suma}, ... }
+let lastRadio = null;
+
+function getStore(){
+  const sel = document.getElementById('storeSelect').value;
+  if(sel === 'custom') return document.getElementById('storeCustomInput').value.trim();
+  return sel;
+}
+document.getElementById('storeSelect').addEventListener('change', ()=>{
+  const isCustom = document.getElementById('storeSelect').value === 'custom';
+  document.getElementById('storeCustomField').style.display = isCustom ? '' : 'none';
+});
+
+// Por defecto, proponemos el mes natural anterior completo
+(function initFechasPorDefecto(){
+  const hoy = new Date();
+  const inicioMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth()-1, 1);
+  const finMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+  const toISO = (d)=>d.toISOString().slice(0,10);
+  document.getElementById('startDateInput').value = toISO(inicioMesAnterior);
+  document.getElementById('endDateInput').value = toISO(finMesAnterior);
+})();
+
+function flash(msg){
+  const stack = document.getElementById('flashStack');
+  const div = document.createElement('div');
+  div.className = 'flash';
+  div.textContent = msg;
+  stack.innerHTML = '';
+  stack.appendChild(div);
+  setTimeout(()=>{ if(div.parentNode) div.remove(); }, 6000);
+}
+function clearFlash(){ document.getElementById('flashStack').innerHTML=''; }
+
+// --- Aritmética de calendario: cuántas veces cae cada día de la semana en un rango de fechas ---
+function conteoDiasSemanaRango(startStr, endStr){
+  const start = new Date(startStr + 'T00:00:00');
+  const end = new Date(endStr + 'T00:00:00');
+  const conteo = {}; DIAS.forEach(d=>conteo[d]=0);
+  const cursor = new Date(start);
+  while(cursor <= end){
+    const wd = cursor.getDay(); // 0=domingo..6=sabado
+    const idx = (wd+6)%7; // convertir a 0=lunes..6=domingo
+    conteo[DIAS[idx]]++;
+    cursor.setDate(cursor.getDate()+1);
+  }
+  return conteo;
+}
+
+function formatoFechaCorta(str){
+  const d = new Date(str + 'T00:00:00');
+  return d.toLocaleDateString('es-ES', {day:'2-digit', month:'2-digit', year:'numeric'});
+}
+
+function redondeoUmbral(valor, umbral){
+  if(valor<=0) return 0;
+  const n = Math.floor(valor-umbral)+1;
+  return Math.max(1,n);
+}
+
+// --- Parseo del Excel ---
+function normaliza(s){
+  return (s||'').toString().trim().toLowerCase()
+    .replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u');
+}
+function esColumnaHora(nombre){
+  const n = normaliza(nombre);
+  return n.includes('numhora') || n.includes('hora') || n.includes('franja');
+}
+function diaDeColumna(nombre){
+  const n = normaliza(nombre);
+  if(!n.startsWith('suma')) return null;
+  for(const d of DIAS){ if(n.includes(normaliza(d))) return d; }
+  return null;
+}
+
+function leerExcel(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      try{
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, {type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true});
+        if(rows.length < 2) return reject('El Excel no tiene filas de datos.');
+        const header = rows[0].map(c => c===undefined||c===null ? '' : String(c));
+
+        let colHora = null;
+        const colDia = {};
+        header.forEach((nombre, idx)=>{
+          if(colHora===null && esColumnaHora(nombre)){ colHora = idx; return; }
+          const d = diaDeColumna(nombre);
+          if(d) colDia[d] = idx;
+        });
+
+        if(colHora===null) return reject("No se encontró una columna de hora (se esperaba algo como 'NumHora').");
+        if(Object.keys(colDia).length===0) return reject("No se encontraron columnas 'Suma<Dia>' (p.ej. 'SumaLunes by NumHora'). Revisa el formato del Excel.");
+
+        const datos = {}; DIAS.forEach(d=>datos[d]={});
+        for(let i=1;i<rows.length;i++){
+          const row = rows[i];
+          if(row[colHora]===undefined || row[colHora]===null || row[colHora]==='') continue;
+          const hora = `${parseInt(row[colHora])}h`;
+          for(const d in colDia){
+            const v = row[colDia[d]];
+            datos[d][hora] = (v===undefined||v===null||v==='') ? 0 : parseFloat(v);
+          }
+        }
+        resolve(datos);
+      }catch(err){ reject('No se ha podido leer el archivo. ¿Es un .xlsx válido?'); }
+    };
+    reader.onerror = ()=>reject('No se ha podido leer el archivo.');
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function horaSortKey(h){
+  const n = parseInt(String(h).replace('h',''));
+  return isNaN(n) ? 9999 : n;
+}
+
+function calcularRadiografia(datos, startStr, endStr, productividad, umbral, store=''){
+  const conteo = conteoDiasSemanaRango(startStr, endStr);
+  const horasSet = new Set();
+  DIAS.forEach(d=>{ Object.keys(datos[d]||{}).forEach(h=>horasSet.add(h)); });
+  const horas = Array.from(horasSet).sort((a,b)=>horaSortKey(a)-horaSortKey(b));
+
+  const filas = {};
+  DIAS.forEach(dia=>{
+    const diaData = datos[dia] || {};
+    const n = conteo[dia] || 1;
+    filas[dia] = horas.map(hora=>{
+      const suma = diaData[hora] || 0;
+      const ventaMedia = suma / n;
+      const req = ventaMedia / productividad;
+      const final = redondeoUmbral(req, umbral);
+      return {hora, ventaMedia, req, final};
+    });
+  });
+
+  return {productividad, umbral, startStr, endStr, store: store||'', conteo, horas, filas};
+}
+
+function renderResultado(radio){
+  lastRadio = radio;
+  document.getElementById('resultTitle').textContent = `Radiografía: ${formatoFechaCorta(radio.startStr)} – ${formatoFechaCorta(radio.endStr)}`;
+  const storeLabel = radio.store ? ` · ${radio.store}` : '';
+  document.getElementById('resultSubtitle').innerHTML =
+    `${radio.store ? `<strong>${radio.store}</strong> &nbsp;·&nbsp; ` : ''}Productividad: <strong>${radio.productividad.toFixed(2)} €/vendedor</strong> · Umbral de redondeo: <strong>${radio.umbral.toFixed(2)}</strong>`;
+
+  const dc = document.getElementById('dayCounts');
+  dc.innerHTML = '';
+  DIAS.forEach(d=>{
+    const el = document.createElement('div');
+    el.className = 'day-count';
+    el.innerHTML = `<span class="day-count-label">${DIAS_LABEL[d]}</span><span class="day-count-value">×${radio.conteo[d]}</span>`;
+    dc.appendChild(el);
+  });
+
+  const table = document.getElementById('radioTable');
+  let html = '<thead><tr><th class="hora-col">Hora</th>';
+  DIAS.forEach(d=> html += `<th>${DIAS_LABEL[d]}</th>`);
+  html += '</tr></thead><tbody>';
+  radio.horas.forEach((hora, i)=>{
+    html += `<tr><td class="hora-col">${hora}</td>`;
+    DIAS.forEach(d=>{
+      const cell = radio.filas[d][i];
+      const staffClass = `staff-${Math.min(cell.final,5)}`;
+      html += `<td class="staff-cell ${staffClass}"><span class="cell-amount">${Math.round(cell.ventaMedia)} €</span><span class="cell-staff">${cell.final}</span></td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+function leerParametros(prodId, umbralId){
+  const prod = parseFloat(document.getElementById(prodId).value);
+  const umbral = parseFloat(document.getElementById(umbralId).value);
+  if(isNaN(prod) || prod<=0) return {error:'La productividad debe ser un número mayor que 0.'};
+  if(isNaN(umbral) || umbral<=0 || umbral>=1) return {error:'El umbral de redondeo debe estar entre 0 y 1 (p.ej. 0.6).'};
+  return {prod, umbral};
+}
+
+document.getElementById('excelInput').addEventListener('change', (e)=>{
+  const f = e.target.files[0];
+  if(f) document.getElementById('dropzoneText').textContent = f.name;
+});
+
+document.getElementById('btnGenerar').addEventListener('click', async ()=>{
+  clearFlash();
+  const fileInput = document.getElementById('excelInput');
+  const file = fileInput.files[0];
+  if(!file){ flash('Sube primero un archivo Excel con las ventas agregadas.'); return; }
+
+  const startStr = document.getElementById('startDateInput').value;
+  const endStr = document.getElementById('endDateInput').value;
+  if(!startStr || !endStr){ flash('Selecciona la fecha de inicio y de fin del periodo.'); return; }
+  if(startStr > endStr){ flash('La fecha "Desde" no puede ser posterior a la fecha "Hasta".'); return; }
+  const params = leerParametros('prodInput','umbralInput');
+  if(params.error){ flash(params.error); return; }
+
+  try{
+    const datos = await leerExcel(file);
+    datosVentas = datos;
+    const radio = calcularRadiografia(datos, startStr, endStr, params.prod, params.umbral, getStore());
+    renderResultado(radio);
+    document.getElementById('prodInput2').value = params.prod;
+    document.getElementById('umbralInput2').value = params.umbral;
+    document.getElementById('viewUpload').classList.add('hidden');
+    document.getElementById('viewResult').classList.remove('hidden');
+    window.scrollTo(0,0);
+  }catch(err){
+    flash(typeof err === 'string' ? err : 'No se ha podido procesar el archivo.');
+  }
+});
+
+document.getElementById('btnRecalcular').addEventListener('click', ()=>{
+  clearFlash();
+  if(!datosVentas){ flash('No hay datos cargados todavía. Sube primero un Excel.'); return; }
+  const params = leerParametros('prodInput2','umbralInput2');
+  if(params.error){ flash(params.error); return; }
+  const startStr = document.getElementById('startDateInput').value;
+  const endStr = document.getElementById('endDateInput').value;
+  const radio = calcularRadiografia(datosVentas, startStr, endStr, params.prod, params.umbral, getStore());
+  renderResultado(radio);
+});
+
+async function exportarPDF(){
+  if(!lastRadio){ flash('No hay ninguna radiografía generada todavía.'); return; }
+  const btn = document.getElementById('btnExportarPDF');
+  const textoOriginal = btn.textContent;
+  btn.textContent = 'Generando PDF…';
+  btn.disabled = true;
+
+  try{
+    const content = document.getElementById('pdfContent');
+    const canvas = await html2canvas(content, {scale:2, backgroundColor:'#ffffff'});
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 10;
+    const usableWidth = pageWidth - margin*2;
+
+    // Cabecera con el título y los parámetros usados
+    pdf.setFont('helvetica','bold');
+    pdf.setFontSize(14);
+    pdf.text(`Radiografía${lastRadio.store ? ' · ' + lastRadio.store : ''}: ${formatoFechaCorta(lastRadio.startStr)} - ${formatoFechaCorta(lastRadio.endStr)}`, margin, 15);
+    pdf.setFont('helvetica','normal');
+    pdf.setFontSize(10);
+    pdf.text(`Productividad: ${lastRadio.productividad.toFixed(2)} €/vendedor   ·   Umbral de redondeo: ${lastRadio.umbral.toFixed(2)}`, margin, 21);
+
+    const imgData = canvas.toDataURL('image/png');
+    const imgWidth = usableWidth;
+    const imgHeight = canvas.height * imgWidth / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = 26; // debajo de la cabecera
+    const firstPageAvail = pageHeight - position - margin;
+
+    if(imgHeight <= firstPageAvail){
+      pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+    } else {
+      // Repartimos la imagen en varias páginas recortando por "tiras"
+      const pxPerMm = canvas.width / imgWidth; // pixeles de canvas por mm
+      let renderedHeightMm = 0;
+      let first = true;
+      while(renderedHeightMm < imgHeight){
+        const availMm = first ? firstPageAvail : (pageHeight - margin*2);
+        const sliceHeightMm = Math.min(availMm, imgHeight - renderedHeightMm);
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = sliceHeightMm * pxPerMm;
+        const ctx = sliceCanvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0,0,sliceCanvas.width, sliceCanvas.height);
+        ctx.drawImage(canvas, 0, renderedHeightMm*pxPerMm, canvas.width, sliceCanvas.height, 0, 0, canvas.width, sliceCanvas.height);
+        const sliceData = sliceCanvas.toDataURL('image/png');
+        const yPos = first ? position : margin;
+        pdf.addImage(sliceData, 'PNG', margin, yPos, imgWidth, sliceHeightMm);
+        renderedHeightMm += sliceHeightMm;
+        first = false;
+        if(renderedHeightMm < imgHeight) pdf.addPage();
+      }
+    }
+
+    pdf.save(`radiografia-${lastRadio.startStr}-a-${lastRadio.endStr}.pdf`);
+  }catch(err){
+    flash('No se ha podido generar el PDF. Inténtalo de nuevo.');
+  }finally{
+    btn.textContent = textoOriginal;
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('btnExportarPDF').addEventListener('click', exportarPDF);
+
+document.getElementById('btnVolver').addEventListener('click', (e)=>{
+  e.preventDefault();
+  document.getElementById('viewResult').classList.add('hidden');
+  document.getElementById('viewUpload').classList.remove('hidden');
+});
+
+/* ===== Tabs ===== */
+document.getElementById('tabBtnRadio').addEventListener('click', ()=>{
+  document.getElementById('tabRadiografia').classList.remove('hidden');
+  document.getElementById('tabEvaluacion').classList.add('hidden');
+  document.getElementById('tabBtnRadio').classList.add('active');
+  document.getElementById('tabBtnEval').classList.remove('active');
+});
+document.getElementById('tabBtnEval').addEventListener('click', ()=>{
+  document.getElementById('tabEvaluacion').classList.remove('hidden');
+  document.getElementById('tabRadiografia').classList.add('hidden');
+  document.getElementById('tabBtnEval').classList.add('active');
+  document.getElementById('tabBtnRadio').classList.remove('active');
+});
+</script>
+
+<script>
+/* ===========================================================
+   TAB 2: Evaluación del turno planificado
+   Namespaced en un IIFE para no chocar con el tab de Radiografía
+=========================================================== */
+(function(){
+
+let pdfData = null, radioData = null;
+let activeTags = new Set(['manager','jefe','artista','limpieza','organizar','porte']);
+
+const ALL_SLOTS = (()=>{
+  const s=[];
+  for(let h=9;h<24;h++) for(const m of [0,30]){if(h===9&&m===0)continue;s.push(`${pad2(h)}:${pad2(m)}`);}
+  for(let h=0;h<=1;h++) for(const m of [0,30]) s.push(`${pad2(h)}:${pad2(m)}`);
+  return s;
+})();
+const DAY_SHORT = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+
+function $e(id){return document.getElementById(id);}
+function setEvalStatus(msg,err=false){
+  $e('evalStatus').textContent=msg;
+  $e('evalStatus').style.color = err ? 'var(--red)' : '';
+}
+function pad2(n){return String(n).padStart(2,'0');}
+function toMin(t){let[h,m]=String(t).split(':').map(Number);if(h<6)h+=24;return h*60+(m||0);}
+function nClass(n){return`n${Math.min(n,6)}`;}
+function getEvalKey(){return localStorage.getItem('anthropic_key')||'';}
+
+window.addEventListener('load',()=>{
+  const saved=getEvalKey();
+  if(saved){
+    $e('evalKeyInput').value=saved;
+    $e('evalKeyStatus').classList.add('visible');
+  }
+});
+
+$e('evalKeySave').addEventListener('click', ()=>{
+  const key=$e('evalKeyInput').value.trim();
+  if(!key.startsWith('sk-ant-')){setEvalStatus('La key debe empezar por sk-ant-',true);return;}
+  localStorage.setItem('anthropic_key',key);
+  $e('evalKeyStatus').classList.add('visible');
+  setEvalStatus('Key guardada. Carga los archivos para empezar.');
+});
+
+function setupDrop(dzId,inId,handler){
+  const dz=$e(dzId),inp=$e(inId);
+  inp.addEventListener('change',e=>{if(e.target.files[0])handler(e.target.files[0],dz);});
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');if(e.dataTransfer.files[0])handler(e.dataTransfer.files[0],dz);});
+}
+setupDrop('evalDzPdf','evalInPdf',handlePDF);
+setupDrop('evalDzXls','evalInXls',handleXLS);
+
+document.querySelectorAll('#evalTogRow .tog input').forEach(cb=>{
+  cb.addEventListener('change',()=>{
+    cb.closest('.tog').classList.toggle('on',cb.checked);
+    if(cb.checked) activeTags.add(cb.value); else activeTags.delete(cb.value);
+    if(pdfData){renderPDFPreview();if(radioData)renderComparison();}
+  });
+});
+
+/* ─────────── PDF → Claude API → JSON ─────────── */
+async function handlePDF(file,dz){
+  const key=getEvalKey();
+  if(!key){setEvalStatus('Introduce y guarda tu API key primero',true);return;}
+  $e('evalPdfName').textContent=file.name;
+  $e('evalPdfProgress').textContent='Leyendo archivo…';
+  dz.classList.remove('ok');
+  dz.classList.add('loading');
+  setEvalStatus('Enviando PDF a Claude…');
+  try{
+    const base64=await fileToBase64(file);
+    $e('evalPdfProgress').textContent='Analizando con Claude…';
+
+    const prompt=`Eres un parser de plannings de Amorino. Analiza este PDF y extrae los turnos.
+
+REGLAS:
+- Incluye SOLO empleados con al menos un turno real (hora inicio + fin). Ignora descansos, vacaciones, bajas, festivos.
+- Para cada turno: d=día (0=Lun,1=Mar,2=Mie,3=Jue,4=Vie,5=Sab,6=Dom), start y end en HH:MM.
+- "19h30"→"19:30", "00h"→"00:00", "01h"→"01:00".
+- Cada bloque horario es un turno independiente. Si un empleado tiene LIMPIEZA 10h30-11h y ARTISTA 14h-18h, son DOS turnos separados: {d:X, start:"10:30", end:"11:00"} y {d:X, start:"14:00", end:"18:00"}. NUNCA fusiones bloques que no son consecutivos.
+- Tags: "manager"=MANAGER DE TIENDA, "jefe"=JEFE DE TURNO, "artista"=ARTISTA DEL GELATO, "limpieza"=LIMPIEZA, "porte"=PORTE, "organizar"=ORGANIZAR Y CONTAR -20.
+- shop: nombre tras "Amorino" en el header.
+- month: 0=enero…6=julio…11=diciembre.
+
+Responde ÚNICAMENTE con JSON válido sin markdown ni explicaciones:
+{"shop":"ALCÁZAR","weekNum":"28","month":6,"year":2026,"days":[{"date":6,"dayName":"Lun"},{"date":7,"dayName":"Mar"},{"date":8,"dayName":"Mie"},{"date":9,"dayName":"Jue"},{"date":10,"dayName":"Vie"},{"date":11,"dayName":"Sab"},{"date":12,"dayName":"Dom"}],"staff":[{"name":"Nombre APELLIDO","tags":["artista"],"shifts":[{"d":0,"start":"10:00","end":"18:00"}]}]}`;
+
+    const response=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':key,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:4096,
+        messages:[{
+          role:'user',
+          content:[
+            {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
+            {type:'text',text:prompt}
+          ]
+        }]
+      })
+    });
+
+    if(!response.ok){
+      const err=await response.json();
+      throw new Error(`API ${response.status}: ${err.error?.message||JSON.stringify(err)}`);
+    }
+
+    const data=await response.json();
+    const text=data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+    const match=text.match(/\{[\s\S]*\}/);
+    if(!match) throw new Error('Claude no devolvió JSON válido');
+    pdfData=JSON.parse(match[0]);
+    if(!pdfData.staff||!pdfData.days) throw new Error('JSON incompleto');
+
+    dz.classList.remove('loading');
+    dz.classList.add('ok');
+    $e('evalPdfProgress').textContent='';
+    setEvalStatus(`PDF parseado · ${pdfData.shop} · Semana ${pdfData.weekNum} · ${pdfData.staff.length} empleados con turno`);
+    $e('evalTiles').classList.remove('hidden');
+    renderPDFPreview();
+    if(radioData) renderComparison();
+  }catch(e){
+    dz.classList.remove('loading');
+    $e('evalPdfProgress').textContent='';
+    setEvalStatus('Error: '+e.message,true);
+  }
+}
+
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();
+    r.onload=()=>resolve(r.result.split(',')[1]);
+    r.onerror=reject;
+    r.readAsDataURL(file);
+  });
+}
+
+function countStaff(slot,day){
+  if(!pdfData) return 0;
+  const sm=toMin(slot);
+  let n=0;
+  for(const s of pdfData.staff){
+    if(!s.tags.some(t=>activeTags.has(t))) continue;
+    for(const sh of s.shifts){
+      if(sh.d!==day) continue;
+      let sM=toMin(sh.start),eM=toMin(sh.end);
+      if(eM<=sM) eM+=24*60;
+      if(sm>=sM&&sm<eM){n++;break;}
+    }
+  }
+  return n;
+}
+
+function renderPDFPreview(){
+  const{shop,weekNum,year,days,staff}=pdfData;
+  $e('evalPdfMeta').innerHTML=`<b>${shop}</b> · Semana ${weekNum} · ${year}<br>${staff.length} empleados con turno`;
+  const n=Math.min(days.length,7);
+  let html='<thead><tr><th class="slot-h">Franja</th>';
+  for(let d=0;d<n;d++) html+=`<th>${DAY_SHORT[d]}<br><span style="font-weight:400;color:var(--text-dim)">${days[d].date}</span></th>`;
+  html+='</tr></thead><tbody>';
+  for(const slot of ALL_SLOTS){
+    const counts=Array.from({length:n},(_,d)=>countStaff(slot,d));
+    if(counts.every(c=>c===0)) continue;
+    html+=`<tr><td class="slot-c">${slot}</td>${counts.map(c=>`<td class="${nClass(c)}">${c||'—'}</td>`).join('')}</tr>`;
+  }
+  $e('evalPdfGrid').innerHTML=html+'</tbody>';
+}
+
+/* ─────────── EXCEL PARSER (radiografía) ─────────── */
+async function handleXLS(file,dz){
+  $e('evalXlsName').textContent=file.name;
+  try{
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array',cellDates:false,raw:true});
+    radioData=parseRadiografiaXLS(wb);
+    if(!radioData||radioData.slots.length===0) throw new Error('No se encontraron franjas.');
+    dz.classList.add('ok');
+    setEvalStatus('Radiografía cargada · '+radioData.shopLabel+' · '+radioData.slots.length+' franjas');
+    $e('evalTiles').classList.remove('hidden');
+    renderXLSPreview();
+    if(pdfData) renderComparison();
+  }catch(e){setEvalStatus('Error Excel: '+e.message,true);}
+}
+
+function slotFromRaw(raw){
+  if(raw===null||raw===undefined||raw==='') return null;
+  const s=String(raw).trim();
+  if(/^\d{4,6}$/.test(s)){
+    const n=parseInt(s);
+    if(n>1000&&n<200000){try{const d=XLSX.SSF.parse_date_code(n);if(d&&d.m>=0&&d.m<=23)return`${pad2(d.m)}:00`;}catch(e){}}
+    return null;
+  }
+  let m;
+  m=s.match(/^(\d{1,2}):(\d{2})\s*[-–]/);if(m)return`${pad2(parseInt(m[1]))}:${m[2]}`;
+  m=s.match(/^(\d{1,2})\s*[-–]\s*\d{1,2}$/);if(m)return`${pad2(parseInt(m[1]))}:00`;
+  m=s.match(/^(\d{1,2}):(\d{2})$/);if(m)return`${pad2(parseInt(m[1]))}:${m[2]}`;
+  return null;
+}
+
+function parseRadiografiaXLS(wb){
+  const MONTH_NAMES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  let sheetName=wb.SheetNames[0];
+  if(pdfData){
+    const target=MONTH_NAMES[pdfData.month];
+    for(const sn of wb.SheetNames){
+      const snl=sn.toLowerCase();
+      if(snl.includes(target.substring(0,4))||snl.includes(target.substring(0,3))){sheetName=sn;break;}
+    }
+  }
+  const ws=wb.Sheets[sheetName];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
+  let shopLabel='Desconocida';
+  for(let r=0;r<Math.min(4,rows.length);r++){
+    const m=rows[r].join(' ').match(/alc[aá]zar|naranjos|plaza\s*nueva|avenida|catedral/i);
+    if(m){shopLabel=m[0].toUpperCase().trim();break;}
+  }
+  const DAY_RE=/lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo/i;
+  let headerRow=-1;
+  for(let r=0;r<rows.length;r++){if(rows[r].filter(c=>DAY_RE.test(String(c))).length>=5){headerRow=r;break;}}
+  if(headerRow<0) return{shopLabel,slots:[],grid:{}};
+  const grid={},slots=[];
+  for(let r=headerRow+1;r<rows.length;r++){
+    const row=rows[r];
+    const slotKey=slotFromRaw(row[0]);if(!slotKey)continue;
+    const vals=[];
+    for(let d=0;d<7;d++){const ci=d*2+1;const v=parseFloat(String(ci<row.length?row[ci]:'').replace(',','.'));vals.push(isNaN(v)?0:v);}
+    if(vals.every(v=>v===0)&&slots.length>3) continue;
+    grid[slotKey]=vals;slots.push(slotKey);
+  }
+  return{sheetName,shopLabel,slots,grid};
+}
+
+function renderXLSPreview(){
+  const{sheetName,shopLabel,slots,grid}=radioData;
+  $e('evalXlsMeta').innerHTML=`<b>${shopLabel}</b> · ${sheetName}<br>${slots.length} franjas horarias`;
+  const n=pdfData?Math.min(pdfData.days.length,7):7;
+  const days=pdfData?pdfData.days:DAY_SHORT.map((_,i)=>({date:'',dayName:DAY_SHORT[i]}));
+  let html='<thead><tr><th class="slot-h">Franja</th>';
+  for(let d=0;d<n;d++) html+=`<th>${DAY_SHORT[d]}${days[d]?.date?`<br><span style="font-weight:400;color:var(--text-dim)">${days[d].date}</span>`:''}</th>`;
+  html+='</tr></thead><tbody>';
+  for(const slot of slots){
+    const ref=grid[slot];if(!ref)continue;
+    html+=`<tr><td class="slot-c">${slot}</td>${ref.slice(0,n).map(v=>`<td class="${nClass(v)}">${v||'—'}</td>`).join('')}</tr>`;
+  }
+  $e('evalXlsGrid').innerHTML=html+'</tbody>';
+}
+
+/* ─────────── COMPARACIÓN ─────────── */
+function renderComparison(){
+  if(!pdfData||!radioData) return;
+  $e('evalResHdr').textContent=`${pdfData.shop} · Semana ${pdfData.weekNum} · ${pdfData.year} · vs ${radioData.sheetName||radioData.shopLabel}`;
+  $e('evalApp').classList.remove('hidden');
+  const slots=radioData.slots,days=pdfData.days,n=Math.min(days.length,7);
+  const thead=$e('evalThead');
+  thead.innerHTML='<th class="cf">Franja</th>';
+  for(let d=0;d<n;d++) thead.innerHTML+=`<th><span class="ct-dy">${DAY_SHORT[d]}</span><br><span class="ct-dt">${days[d].date}</span></th>`;
+  const tbody=$e('evalTbody');tbody.innerHTML='';
+  let totOk=0,totOv=0,totUn=0;
+  for(const slot of slots){
+    const ref=radioData.grid[slot];if(!ref)continue;
+    const trA=document.createElement('tr'),trR=document.createElement('tr');trR.className='rr';
+    let f=document.createElement('td');f.className='cf';f.textContent=slot;trA.appendChild(f);
+    f=document.createElement('td');f.className='cf';f.textContent='↳ radio';trR.appendChild(f);
+    for(let d=0;d<n;d++){
+      const actual=countStaff(slot,d),refVal=ref[d]??0;
+      const td=document.createElement('td');
+      if(actual===0&&refVal===0){td.innerHTML='<span class="eval-cell eval-em">—</span>';}
+      else{
+        const diff=actual-refVal;
+        const cls=diff>0?'eval-ov':diff<0?'eval-un':'eval-ok';
+        if(cls==='eval-ok')totOk++;else if(cls==='eval-ov')totOv++;else totUn++;
+        const ds=diff!==0?`<span class="eval-df">${diff>0?'+':''}${diff}</span>`:'';
+        td.innerHTML=`<span class="eval-cell ${cls}">${actual}${ds}</span>`;
+      }
+      trA.appendChild(td);
+      const td2=document.createElement('td');td2.className='rv';td2.textContent=refVal===0?'—':String(refVal);trR.appendChild(td2);
+    }
+    tbody.appendChild(trA);tbody.appendChild(trR);
+  }
+  $e('evalSummary').innerHTML=`
+    <div class="eval-stat"><div class="eval-stat-label">Correctas</div><div class="eval-stat-val v-ok">${totOk}</div></div>
+    <div class="eval-stat"><div class="eval-stat-label">Por encima</div><div class="eval-stat-val v-ov">${totOv}</div></div>
+    <div class="eval-stat"><div class="eval-stat-label">Por debajo</div><div class="eval-stat-val v-un">${totUn}</div></div>
+    <div class="eval-stat"><div class="eval-stat-label">Total</div><div class="eval-stat-val">${totOk+totOv+totUn}</div></div>`;
+
+  renderClosures();
+}
+
+/* ─────────── CIERRES ───────────
+   Una persona "cierra" un día si su hora de fin de turno coincide
+   con la hora de fin más tardía de ese día (entre los turnos con
+   etiquetas activas). Si entra al día siguiente con menos de 12h
+   de descanso desde ese cierre, se marca como incidencia. */
+function getDayLatestEnd(day){
+  let latest=-Infinity;
+  for(const s of pdfData.staff){
+    if(!s.tags.some(t=>activeTags.has(t))) continue;
+    for(const sh of s.shifts){
+      if(sh.d!==day) continue;
+      let eM=toMin(sh.end);
+      if(eM<toMin(sh.start)) eM+=24*60;
+      if(eM>latest) latest=eM;
+    }
+  }
+  return latest;
+}
+
+function renderClosures(){
+  if(!pdfData) return;
+  const numDays=Math.min(pdfData.days.length,7);
+  const dayLatest=[];
+  for(let d=0;d<numDays;d++) dayLatest.push(getDayLatestEnd(d));
+
+  const results=[];
+
+  for(const s of pdfData.staff){
+    if(!s.tags.some(t=>activeTags.has(t))) continue;
+    let closureCount=0;
+    const incidents=[];
+    const detailParts=[];
+
+    for(const sh of s.shifts){
+      if(sh.d>=numDays) continue;
+      let eM=toMin(sh.end);
+      const startM=toMin(sh.start);
+      if(eM<startM) eM+=24*60;
+
+      const isClosure = eM === dayLatest[sh.d];
+      if(!isClosure) continue;
+      closureCount++;
+
+      const nextDay=sh.d+1;
+      let nextDayLabel = nextDay<numDays ? DAY_SHORT[nextDay] : null;
+
+      if(nextDay<numDays){
+        const nextShifts=s.shifts.filter(x=>x.d===nextDay);
+        if(nextShifts.length>0){
+          let earliestStart=Infinity;
+          for(const ns of nextShifts){
+            const sM=toMin(ns.start);
+            if(sM<earliestStart) earliestStart=sM;
+          }
+          const restMinutes = (earliestStart + 24*60) - eM;
+          const restHours = (restMinutes/60).toFixed(1);
+          if(restMinutes < 12*60){
+            incidents.push({day:DAY_SHORT[sh.d], nextDay:nextDayLabel, rest:restHours});
+            detailParts.push(`<span class="warn">${DAY_SHORT[sh.d]}→${nextDayLabel}: ${restHours}h ⚠</span>`);
+          } else {
+            detailParts.push(`${DAY_SHORT[sh.d]}→${nextDayLabel}: ${restHours}h`);
+          }
+        } else {
+          detailParts.push(`${DAY_SHORT[sh.d]}: sin turno al día siguiente`);
+        }
+      } else {
+        detailParts.push(`${DAY_SHORT[sh.d]}: último día de la semana`);
+      }
+    }
+
+    if(closureCount>0){
+      results.push({name:s.name, closures:closureCount, incidents:incidents.length, detail:detailParts.join(' · ')});
+    }
+  }
+
+  results.sort((a,b)=>b.closures-a.closures);
+
+  const tbody=$e('evalClosuresTbody');
+  tbody.innerHTML='';
+  for(const r of results){
+    const tr=document.createElement('tr');
+    if(r.incidents>0) tr.className='has-warn';
+    tr.innerHTML=`
+      <td>${r.name}</td>
+      <td class="num">${r.closures}</td>
+      <td class="num">${r.incidents>0?`<span class="badge">${r.incidents}</span>`:'—'}</td>
+      <td class="detail">${r.detail}</td>`;
+    tbody.appendChild(tr);
+  }
+  if(results.length===0){
+    tbody.innerHTML='<tr><td colspan="4" style="color:var(--text-dim)">No hay datos de cierres con las etiquetas seleccionadas.</td></tr>';
+  }
+}
+
+/* ─────────── EXPORTAR PDF ─────────── */
+async function exportEvalPDF(){
+  const btn=$e('evalExportBtn');
+  const original=btn.textContent;
+  btn.textContent='Generando…';
+  btn.disabled=true;
+  try{
+    const area=$e('evalExportArea');
+    const canvas=await html2canvas(area,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+    const imgData=canvas.toDataURL('image/png');
+    const {jsPDF}=window.jspdf;
+
+    const pageWidth=595.28;
+    const margin=24;
+    const usableWidth=pageWidth-margin*2;
+    const imgWidth=usableWidth;
+    const imgHeight=canvas.height*(imgWidth/canvas.width);
+
+    const pdf=new jsPDF('p','pt','a4');
+    const pageHeight=841.89;
+    let heightLeft=imgHeight;
+    let position=margin;
+
+    pdf.setFontSize(14);
+    pdf.text(`Evaluación del turno planificado — ${pdfData.shop} · Semana ${pdfData.weekNum} · ${pdfData.year}`, margin, margin);
+    position = margin+20;
+
+    pdf.addImage(imgData,'PNG',margin,position,imgWidth,imgHeight);
+    heightLeft -= (pageHeight-position-margin);
+
+    while(heightLeft>0){
+      pdf.addPage();
+      position = heightLeft - imgHeight + margin;
+      pdf.addImage(imgData,'PNG',margin,position,imgWidth,imgHeight);
+      heightLeft -= (pageHeight-margin*2);
+    }
+
+    const filename=`evaluacion_turnos_${(pdfData.shop||'tienda').replace(/\s+/g,'_')}_semana${pdfData.weekNum}.pdf`;
+    pdf.save(filename);
+  }catch(e){
+    setEvalStatus('Error al exportar PDF: '+e.message, true);
+  }finally{
+    btn.textContent=original;
+    btn.disabled=false;
+  }
+}
+$e('evalExportBtn').addEventListener('click', exportEvalPDF);
+
+})();
+</script>
+</body>
+</html>
