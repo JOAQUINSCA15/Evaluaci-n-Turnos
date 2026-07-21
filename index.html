@@ -1148,40 +1148,207 @@ async function exportEvalPDF(){
   btn.textContent='Generando…';
   btn.disabled=true;
   try{
-    const area=$e('evalExportArea');
-    const canvas=await html2canvas(area,{scale:2,backgroundColor:'#ffffff',useCORS:true});
-    const imgData=canvas.toDataURL('image/png');
     const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF('l','pt','a4'); // landscape para que quepan los 7 días
+    const pw=841.89, ph=595.28;
+    const mg=28;
+    let y=mg;
 
-    const pageWidth=595.28;
-    const margin=24;
-    const usableWidth=pageWidth-margin*2;
-    const imgWidth=usableWidth;
-    const imgHeight=canvas.height*(imgWidth/canvas.width);
+    // ── Colores ──
+    const C={
+      ok:[234,248,225],  okT:[45,110,20],
+      ov:[225,237,251],  ovT:[24,90,165],
+      un:[252,235,235],  unT:[163,45,45],
+      head:[241,242,239],lineH:[180,181,178],
+      line:[220,221,217],cellBg:[251,251,250],
+      title:[23,24,26],  sub:[98,102,107]
+    };
 
-    const pdf=new jsPDF('p','pt','a4');
-    const pageHeight=841.89;
-    let heightLeft=imgHeight;
-    let position=margin;
+    const DAY_SHORT=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 
-    pdf.setFontSize(14);
-    pdf.text(`Evaluación del turno planificado — ${pdfData.shop} · Semana ${pdfData.weekNum} · ${pdfData.year}`, margin, margin);
-    position = margin+20;
+    // ── Título ──
+    pdf.setFont('helvetica','bold');
+    pdf.setFontSize(13);
+    pdf.setTextColor(...C.title);
+    pdf.text(`Evaluación del turno — ${pdfData.shop}  ·  Semana ${pdfData.weekNum}  ·  ${pdfData.year}`,mg,y);
+    y+=16;
+    pdf.setFont('helvetica','normal');
+    pdf.setFontSize(8);
+    pdf.setTextColor(...C.sub);
+    const days=pdfData.days, n=Math.min(days.length,7);
+    pdf.text(`${days[0]?.date||''} ${DAY_SHORT[0]} – ${days[n-1]?.date||''} ${DAY_SHORT[n-1]}   ·   Radiografía: ${radioData?.sheetName||radioData?.shopLabel||''}`,mg,y);
+    y+=20;
 
-    pdf.addImage(imgData,'PNG',margin,position,imgWidth,imgHeight);
-    heightLeft -= (pageHeight-position-margin);
+    // ── Tabla comparativa ──
+    const slots=radioData.slots;
+    const colW=54, slotW=38, rowH=16;
+    const tableW=slotW+colW*n;
 
-    while(heightLeft>0){
-      pdf.addPage();
-      position = heightLeft - imgHeight + margin;
-      pdf.addImage(imgData,'PNG',margin,position,imgWidth,imgHeight);
-      heightLeft -= (pageHeight-margin*2);
+    // Cabecera
+    pdf.setFillColor(...C.head);
+    pdf.rect(mg,y,tableW,rowH+4,'F');
+    pdf.setDrawColor(...C.lineH);
+    pdf.setLineWidth(0.5);
+    pdf.rect(mg,y,tableW,rowH+4,'S');
+    pdf.setFont('helvetica','bold');
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(...C.sub);
+    pdf.text('Franja',mg+3,y+rowH-2);
+    for(let d=0;d<n;d++){
+      const x=mg+slotW+colW*d;
+      pdf.text(`${DAY_SHORT[d]} ${days[d]?.date||''}`,x+colW/2,y+10,{align:'center'});
+      pdf.text('plan / radio',x+colW/2,y+rowH,{align:'center'});
+    }
+    y+=rowH+4;
+
+    // Filas
+    for(const slot of slots){
+      const ref=radioData.grid[slot]; if(!ref) continue;
+      if(y+rowH>ph-mg){ pdf.addPage(); y=mg; }
+
+      pdf.setFillColor(...C.cellBg);
+      pdf.setDrawColor(...C.line);
+      pdf.setLineWidth(0.3);
+      pdf.rect(mg,y,tableW,rowH,'FD');
+
+      pdf.setFont('helvetica','normal');
+      pdf.setFontSize(7);
+      pdf.setTextColor(...C.sub);
+      pdf.text(slot,mg+3,y+rowH-4);
+
+      for(let d=0;d<n;d++){
+        const actual=countStaff(slot,d), refVal=ref[d]??0;
+        const x=mg+slotW+colW*d;
+        const cw=colW-2, ch=rowH-2;
+        if(actual===0&&refVal===0){
+          pdf.setTextColor(...C.sub);
+          pdf.text('—',x+colW/2,y+rowH-4,{align:'center'});
+        } else {
+          const diff=actual-refVal;
+          let bg, fg;
+          if(diff>0){bg=C.ov;fg=C.ovT;}
+          else if(diff<0){bg=C.un;fg=C.unT;}
+          else{bg=C.ok;fg=C.okT;}
+          pdf.setFillColor(...bg);
+          pdf.setDrawColor(...C.line);
+          pdf.roundedRect(x+1,y+1,cw,ch,2,2,'FD');
+          pdf.setFont('helvetica','bold');
+          pdf.setFontSize(8);
+          pdf.setTextColor(...fg);
+          const label=diff!==0?`${actual} (${diff>0?'+':''}${diff})`:`${actual}`;
+          pdf.text(label,x+colW/2,y+rowH-3,{align:'center'});
+        }
+      }
+      y+=rowH;
+    }
+
+    // ── Leyenda ──
+    y+=10;
+    if(y+14>ph-mg){pdf.addPage();y=mg;}
+    const items=[{bg:C.ok,fg:C.okT,l:'Igual'},{bg:C.ov,fg:C.ovT,l:'Por encima'},{bg:C.un,fg:C.unT,l:'Por debajo'}];
+    let lx=mg;
+    for(const it of items){
+      pdf.setFillColor(...it.bg);pdf.roundedRect(lx,y,8,8,1,1,'F');
+      pdf.setFont('helvetica','normal');pdf.setFontSize(7);pdf.setTextColor(...it.fg);
+      pdf.text(it.l,lx+11,y+7);
+      lx+=52;
+    }
+    y+=22;
+
+    // ── Resumen ──
+    if(y+30>ph-mg){pdf.addPage();y=mg;}
+    let totOk=0,totOv=0,totUn=0;
+    for(const slot of slots){
+      const ref=radioData.grid[slot];if(!ref)continue;
+      for(let d=0;d<n;d++){
+        const actual=countStaff(slot,d),refVal=ref[d]??0;
+        if(actual===0&&refVal===0)continue;
+        const diff=actual-refVal;
+        if(diff>0)totOv++;else if(diff<0)totUn++;else totOk++;
+      }
+    }
+    pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.setTextColor(...C.title);
+    pdf.text(`Correctas: ${totOk}   Por encima: ${totOv}   Por debajo: ${totUn}   Total: ${totOk+totOv+totUn}`,mg,y);
+    y+=20;
+
+    // ── Tabla de cierres ──
+    if(y+16>ph-mg){pdf.addPage();y=mg;}
+    pdf.setFont('helvetica','bold');pdf.setFontSize(9);pdf.setTextColor(...C.title);
+    pdf.text('Cierres por persona',mg,y);y+=12;
+
+    const closureRows=[];
+    const numDays=n;
+    const dayLatest=[];
+    for(let d=0;d<numDays;d++){
+      let latest=-Infinity;
+      for(const s of pdfData.staff){
+        if(!s.tags.some(t=>activeTags.has(t)))continue;
+        for(const sh of s.shifts){
+          if(sh.d!==d)continue;
+          let eM=toMin(sh.end);if(eM<toMin(sh.start))eM+=24*60;
+          if(eM>latest)latest=eM;
+        }
+      }
+      dayLatest.push(latest);
+    }
+    for(const s of pdfData.staff){
+      if(!s.tags.some(t=>activeTags.has(t)))continue;
+      let closures=0,incidents=0,details=[];
+      for(const sh of s.shifts){
+        if(sh.d>=numDays)continue;
+        let eM=toMin(sh.end);const sM=toMin(sh.start);if(eM<sM)eM+=24*60;
+        if(eM!==dayLatest[sh.d])continue;
+        closures++;
+        const nd=sh.d+1;
+        if(nd<numDays){
+          const ns=pdfData.staff.find(x=>x.name===s.name)?.shifts.filter(x=>x.d===nd)||[];
+          if(ns.length){
+            let earliest=Infinity;for(const x of ns){const m=toMin(x.start);if(m<earliest)earliest=m;}
+            const rest=(earliest+24*60)-eM;
+            const rh=(rest/60).toFixed(1);
+            if(rest<12*60){incidents++;details.push(`${DAY_SHORT[sh.d]}→${DAY_SHORT[nd]}: ${rh}h ⚠`);}
+            else details.push(`${DAY_SHORT[sh.d]}→${DAY_SHORT[nd]}: ${rh}h`);
+          }else{details.push(`${DAY_SHORT[sh.d]}: sin turno siguiente`);}
+        }else{details.push(`${DAY_SHORT[sh.d]}: fin de semana`);}
+      }
+      if(closures>0)closureRows.push({name:s.name,closures,incidents,detail:details.join('  ·  ')});
+    }
+    closureRows.sort((a,b)=>b.closures-a.closures);
+
+    const cH=14;
+    // header
+    pdf.setFillColor(...C.head);pdf.rect(mg,y,tableW,cH,'F');
+    pdf.setFont('helvetica','bold');pdf.setFontSize(7);pdf.setTextColor(...C.sub);
+    pdf.text('Empleado',mg+3,y+cH-3);
+    pdf.text('Cierres',mg+160,y+cH-3,{align:'center'});
+    pdf.text('Incidencias <12h',mg+210,y+cH-3,{align:'center'});
+    pdf.text('Detalle',mg+260,y+cH-3);
+    y+=cH;
+
+    for(const r of closureRows){
+      if(y+cH>ph-mg){pdf.addPage();y=mg;}
+      const warn=r.incidents>0;
+      pdf.setFillColor(...(warn?C.un:C.cellBg));
+      pdf.setDrawColor(...C.line);pdf.setLineWidth(0.3);
+      pdf.rect(mg,y,tableW,cH,'FD');
+      pdf.setFont('helvetica',warn?'bold':'normal');
+      pdf.setFontSize(7);
+      pdf.setTextColor(...(warn?C.unT:C.title));
+      pdf.text(r.name,mg+3,y+cH-3);
+      pdf.setFont('helvetica','normal');pdf.setTextColor(...C.title);
+      pdf.text(String(r.closures),mg+160,y+cH-3,{align:'center'});
+      pdf.text(r.incidents>0?String(r.incidents):'—',mg+210,y+cH-3,{align:'center'});
+      pdf.setTextColor(...C.sub);
+      const detailTrunc=pdf.splitTextToSize(r.detail,tableW-270)[0]||'';
+      pdf.text(detailTrunc,mg+260,y+cH-3);
+      y+=cH;
     }
 
     const filename=`evaluacion_turnos_${(pdfData.shop||'tienda').replace(/\s+/g,'_')}_semana${pdfData.weekNum}.pdf`;
     pdf.save(filename);
   }catch(e){
-    setEvalStatus('Error al exportar PDF: '+e.message, true);
+    setEvalStatus('Error al exportar PDF: '+e.message,true);
+    console.error(e);
   }finally{
     btn.textContent=original;
     btn.disabled=false;
